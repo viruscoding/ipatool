@@ -8,6 +8,7 @@ const (
 
 	CustomerMessageBadLogin             = "MZFinance.BadLogin.Configurator_message"
 	CustomerMessageSubscriptionRequired = "Subscription Required"
+	CustomerMessageAccountDisabled      = "Your account is disabled."
 
 	iTunesAPIDomain     = "itunes.apple.com"
 	iTunesAPIPathSearch = "/search"

@@ -2,8 +2,8 @@ package appstore
 
 import (
 	"fmt"
-	"github.com/majd/ipatool/pkg/http"
 	"github.com/pkg/errors"
+	"github.com/viruscoding/ipatool/pkg/http"
 	"net/url"
 	"strconv"
 )

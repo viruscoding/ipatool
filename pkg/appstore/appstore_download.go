@@ -4,10 +4,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"github.com/majd/ipatool/pkg/http"
-	"github.com/majd/ipatool/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/schollz/progressbar/v3"
+	"github.com/viruscoding/ipatool/pkg/http"
+	"github.com/viruscoding/ipatool/pkg/util"
 	"howett.net/plist"
 	"io"
 	"os"
@@ -44,6 +44,90 @@ type PackageInfo struct {
 
 type DownloadOutput struct {
 	DestinationPath string
+}
+
+func (a *appstore) DownloadV2(bundleID string, acquireLicense bool) (DownloadItemResult, error) {
+	acc, err := a.account()
+	if err != nil {
+		return DownloadItemResult{}, errors.Wrap(err, ErrGetAccount.Error())
+	}
+
+	countryCode, err := a.countryCodeFromStoreFront(acc.StoreFront)
+	if err != nil {
+		return DownloadItemResult{}, errors.Wrap(err, ErrInvalidCountryCode.Error())
+	}
+
+	app, err := a.lookup(bundleID, countryCode)
+	if err != nil {
+		return DownloadItemResult{}, errors.Wrap(err, ErrAppLookup.Error())
+	}
+	macAddr, err := a.machine.MacAddress()
+	if err != nil {
+		return DownloadItemResult{}, errors.Wrap(err, ErrGetMAC.Error())
+	}
+
+	guid := strings.ReplaceAll(strings.ToUpper(macAddr), ":", "")
+
+	result, err := a.downloadV2(acc, app, guid, acquireLicense, true)
+	if err != nil {
+		return DownloadItemResult{}, errors.Wrap(err, "download request failed")
+	}
+
+	return result, nil
+}
+
+func (a *appstore) downloadV2(acc Account, app App, guid string, acquireLicense, attemptToRenewCredentials bool) (DownloadItemResult, error) {
+	req := a.downloadRequest(acc, app, guid)
+
+	res, err := a.downloadClient.Send(req)
+	if err != nil {
+		return DownloadItemResult{}, errors.Wrap(err, ErrRequest.Error())
+	}
+
+	if res.Data.FailureType == FailureTypePasswordTokenExpired {
+		if attemptToRenewCredentials {
+			a.logger.Verbose().Msg("retrieving new password token")
+			acc, err = a.login(acc.Email, acc.Password, "", guid, 0, true)
+			if err != nil {
+				return DownloadItemResult{}, errors.Wrap(err, ErrPasswordTokenExpired.Error())
+			}
+
+			return a.downloadV2(acc, app, guid, acquireLicense, false)
+		}
+
+		return DownloadItemResult{}, ErrPasswordTokenExpired
+	}
+
+	if res.Data.FailureType == FailureTypeLicenseNotFound && acquireLicense {
+		a.logger.Verbose().Msg("attempting to acquire license")
+		err = a.purchase(app.BundleID, guid, true)
+		if err != nil {
+			return DownloadItemResult{}, errors.Wrap(err, ErrPurchase.Error())
+		}
+
+		return a.downloadV2(acc, app, guid, false, attemptToRenewCredentials)
+	}
+
+	if res.Data.FailureType == FailureTypeLicenseNotFound {
+		return DownloadItemResult{}, ErrLicenseRequired
+	}
+
+	if res.Data.FailureType != "" && res.Data.CustomerMessage != "" {
+		a.logger.Verbose().Interface("response", res).Send()
+		return DownloadItemResult{}, errors.New(res.Data.CustomerMessage)
+	}
+
+	if res.Data.FailureType != "" {
+		a.logger.Verbose().Interface("response", res).Send()
+		return DownloadItemResult{}, ErrGeneric
+	}
+
+	if len(res.Data.Items) == 0 {
+		a.logger.Verbose().Interface("response", res).Send()
+		return DownloadItemResult{}, ErrInvalidResponse
+	}
+
+	return res.Data.Items[0], nil
 }
 
 func (a *appstore) Download(bundleID string, outputPath string, acquireLicense bool) (DownloadOutput, error) {
@@ -151,6 +235,65 @@ func (a *appstore) download(acc Account, app App, dst, guid string, acquireLicen
 	err = a.os.Remove(fmt.Sprintf("%s.tmp", dst))
 	if err != nil {
 		return errors.Wrap(err, ErrRemoveTempFile.Error())
+	}
+
+	return nil
+}
+
+func (a *appstore) DownloadFileV2(dst, sourceURL string) (err error) {
+	req, err := a.httpClient.NewRequest("GET", sourceURL, nil)
+	if err != nil {
+		return errors.Wrap(err, ErrCreateRequest.Error())
+	}
+
+	res, err := a.httpClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, ErrRequest.Error())
+	}
+
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != err && err == nil {
+			err = closeErr
+		}
+	}()
+
+	file, err := a.os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return errors.Wrap(err, ErrOpenFile.Error())
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != err && err == nil {
+			err = closeErr
+		}
+	}()
+
+	sizeMB := float64(res.ContentLength) / (1 << 20)
+	a.logger.Verbose().Str("size", fmt.Sprintf("%.2fMB", sizeMB)).Msg("downloading")
+
+	if a.interactive {
+		bar := progressbar.NewOptions64(res.ContentLength,
+			progressbar.OptionSetDescription("downloading"),
+			progressbar.OptionSetWriter(os.Stdout),
+			progressbar.OptionShowBytes(true),
+			progressbar.OptionSetWidth(20),
+			progressbar.OptionFullWidth(),
+			progressbar.OptionThrottle(65*time.Millisecond),
+			progressbar.OptionShowCount(),
+			progressbar.OptionClearOnFinish(),
+			progressbar.OptionSpinnerType(14),
+			progressbar.OptionSetRenderBlankState(true),
+			progressbar.OptionSetElapsedTime(false),
+			progressbar.OptionSetPredictTime(false),
+		)
+
+		_, err = io.Copy(io.MultiWriter(file, bar), res.Body)
+	} else {
+		_, err = io.Copy(file, res.Body)
+	}
+
+	if err != nil {
+		return errors.Wrap(err, ErrFileWrite.Error())
 	}
 
 	return nil

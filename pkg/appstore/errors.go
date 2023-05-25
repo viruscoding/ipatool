@@ -3,6 +3,8 @@ package appstore
 import "errors"
 
 var (
+	ErrPasswordTokenEmpty     = errors.New("password token is empty")
+	ErrAccountDisabled        = errors.New("account is disabled")
 	ErrAppLookup              = errors.New("failed to find app")
 	ErrAppNotFound            = errors.New("failed to find app on the App Store")
 	ErrApplyLegacyPatches     = errors.New("failed to apply legacy patches")

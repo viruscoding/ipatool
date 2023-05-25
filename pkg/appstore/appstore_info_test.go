@@ -3,10 +3,10 @@ package appstore
 import (
 	"fmt"
 	"github.com/golang/mock/gomock"
-	"github.com/majd/ipatool/pkg/keychain"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"github.com/viruscoding/ipatool/pkg/keychain"
 )
 
 var _ = Describe("AppStore (Info)", func() {

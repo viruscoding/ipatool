@@ -68,9 +68,18 @@ func (c *client[R]) Send(req Request) (Result[R], error) {
 		request.Header.Set(key, val)
 	}
 
-	res, err := c.internalClient.Do(request)
-	if err != nil {
-		return Result[R]{}, errors.Wrap(err, ErrRequest.Error())
+	var res *http.Response
+	var retries = 3
+	for {
+		res, err = c.internalClient.Do(request)
+		retries = retries - 1
+		if err != nil {
+			if retries <= 0 {
+				return Result[R]{}, errors.Wrap(err, ErrRequest.Error())
+			}
+			continue
+		}
+		break
 	}
 
 	err = c.cookieJar.Save()

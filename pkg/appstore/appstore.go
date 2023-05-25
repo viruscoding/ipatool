@@ -1,10 +1,10 @@
 package appstore
 
 import (
-	"github.com/majd/ipatool/pkg/http"
-	"github.com/majd/ipatool/pkg/keychain"
-	"github.com/majd/ipatool/pkg/log"
-	"github.com/majd/ipatool/pkg/util"
+	"github.com/viruscoding/ipatool/pkg/http"
+	"github.com/viruscoding/ipatool/pkg/keychain"
+	"github.com/viruscoding/ipatool/pkg/log"
+	"github.com/viruscoding/ipatool/pkg/util"
 	"io"
 	"os"
 )
@@ -17,6 +17,9 @@ type AppStore interface {
 	Search(term string, limit int64) (SearchOutput, error)
 	Purchase(bundleID string) error
 	Download(bundleID string, outputPath string, acquireLicense bool) (DownloadOutput, error)
+	DownloadV2(bundleID string, acquireLicense bool) (DownloadItemResult, error)
+	LoginFirstMaybe(email, password string) error
+	DownloadFileV2(dst, sourceURL string) (err error)
 }
 
 type appstore struct {

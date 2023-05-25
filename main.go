@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/majd/ipatool/cmd"
+	"github.com/viruscoding/ipatool/cmd"
 	"os"
 )
 

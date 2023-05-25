@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/majd/ipatool/pkg/http"
-	"github.com/majd/ipatool/pkg/util"
+	"github.com/99designs/keyring"
 	"github.com/pkg/errors"
+	"github.com/viruscoding/ipatool/pkg/http"
+	"github.com/viruscoding/ipatool/pkg/util"
 	"os"
 	"strings"
 )
@@ -32,6 +33,41 @@ type LoginResult struct {
 type LoginOutput struct {
 	Name  string
 	Email string
+}
+
+// LoginFirstMaybe 如果keyring中存在account则更新密码, 不存在则登录
+func (a *appstore) LoginFirstMaybe(email, password string) error {
+	if data, err := a.keychain.Get("account"); err != nil {
+		if !errors.Is(err, keyring.ErrKeyNotFound) {
+			return errors.Wrap(err, "LoginFirstMaybe")
+		}
+		// 登录
+		login, err := a.Login(email, password, "")
+		if err != nil {
+			return errors.Wrap(err, "LoginFirstMaybe")
+		}
+		a.logger.Verbose().
+			Str("email", email).
+			Str("password", password).
+			Str("nickname", login.Name).
+			Msg("login success")
+	} else { // 更新密码
+		acc := Account{}
+		if err := json.Unmarshal(data, &acc); err != nil {
+			return errors.Wrap(err, "LoginFirstMaybe")
+		}
+
+		acc.Password = password
+		if data, err = json.Marshal(acc); err != nil {
+			return errors.Wrap(err, "LoginFirstMaybe")
+		}
+
+		err := a.keychain.Set("account", data)
+		if err != nil {
+			return errors.Wrap(err, "LoginFirstMaybe")
+		}
+	}
+	return nil
 }
 
 func (a *appstore) Login(email, password, authCode string) (LoginOutput, error) {
@@ -112,6 +148,15 @@ func (a *appstore) login(email, password, authCode, guid string, attempt int, fa
 		} else {
 			return Account{}, ErrAuthCodeRequired
 		}
+	}
+
+	if res.Data.CustomerMessage == CustomerMessageAccountDisabled {
+		return Account{}, ErrAccountDisabled
+	}
+
+	if res.Data.PasswordToken == "" {
+		a.logger.Verbose().Interface("response", res).Send()
+		return Account{}, ErrPasswordTokenEmpty
 	}
 
 	addr := res.Data.Account.Address

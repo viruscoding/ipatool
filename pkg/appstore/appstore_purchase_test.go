@@ -2,12 +2,12 @@ package appstore
 
 import (
 	"github.com/golang/mock/gomock"
-	"github.com/majd/ipatool/pkg/http"
-	"github.com/majd/ipatool/pkg/keychain"
-	"github.com/majd/ipatool/pkg/log"
-	"github.com/majd/ipatool/pkg/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/viruscoding/ipatool/pkg/http"
+	"github.com/viruscoding/ipatool/pkg/keychain"
+	"github.com/viruscoding/ipatool/pkg/log"
+	"github.com/viruscoding/ipatool/pkg/util"
 )
 
 var _ = Describe("AppStore (Purchase)", func() {
