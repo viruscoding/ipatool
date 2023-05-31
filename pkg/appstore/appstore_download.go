@@ -85,7 +85,7 @@ func (a *appstore) downloadV2(acc Account, app App, guid string, acquireLicense,
 	}
 
 	if res.Data.FailureType == FailureTypePasswordTokenExpired ||
-		res.Data.CustomerMessage == FailureTypePasswordHasChanged {
+		res.Data.FailureType == FailureTypePasswordHasChanged {
 		if attemptToRenewCredentials {
 			a.logger.Verbose().Msg("retrieving new password token")
 			acc, err = a.login(acc.Email, acc.Password, "", guid, 0, true)
@@ -179,7 +179,7 @@ func (a *appstore) download(acc Account, app App, dst, guid string, acquireLicen
 	}
 
 	if res.Data.FailureType == FailureTypePasswordTokenExpired ||
-		res.Data.CustomerMessage == FailureTypePasswordHasChanged {
+		res.Data.FailureType == FailureTypePasswordHasChanged {
 		if attemptToRenewCredentials {
 			a.logger.Verbose().Msg("retrieving new password token")
 			acc, err = a.login(acc.Email, acc.Password, "", guid, 0, true)

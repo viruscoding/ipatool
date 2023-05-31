@@ -83,7 +83,7 @@ func (a *appstore) purchaseWithParams(acc Account, app App, bundleID string, gui
 	}
 
 	if res.Data.FailureType == FailureTypePasswordTokenExpired ||
-		res.Data.CustomerMessage == FailureTypePasswordHasChanged {
+		res.Data.FailureType == FailureTypePasswordHasChanged {
 		if attemptToRenewCredentials {
 			a.logger.Verbose().Msg("retrieving new password token")
 			acc, err = a.login(acc.Email, acc.Password, "", guid, 0, true)
