@@ -5,11 +5,11 @@ const (
 	FailureTypePasswordTokenExpired   = "2034"
 	FailureTypeLicenseNotFound        = "9610"
 	FailureTypeTemporarilyUnavailable = "2059"
+	FailureTypePasswordHasChanged     = "2002"
 
 	CustomerMessageBadLogin             = "MZFinance.BadLogin.Configurator_message"
 	CustomerMessageSubscriptionRequired = "Subscription Required"
 	CustomerMessageAccountDisabled      = "Your account is disabled."
-	CustomerMessagePasswordChanged      = "Your password has changed."
 
 	iTunesAPIDomain     = "itunes.apple.com"
 	iTunesAPIPathSearch = "/search"

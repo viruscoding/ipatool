@@ -150,8 +150,7 @@ func (a *appstore) login(email, password, authCode, guid string, attempt int, fa
 		}
 	}
 
-	if res.Data.CustomerMessage == CustomerMessageAccountDisabled ||
-		res.Data.CustomerMessage == CustomerMessagePasswordChanged {
+	if res.Data.CustomerMessage == CustomerMessageAccountDisabled {
 		return Account{}, ErrAccountDisabled
 	}
 
